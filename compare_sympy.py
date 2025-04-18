@@ -42,7 +42,8 @@ plt.ylabel(r'$\sigma_{yy}$')
 plt.tight_layout()
 plt.legend()
 
+#--------Compare with FE solution------------#
+fea_sigma_y = np.loadtxt('fenicsx_scripts/FEA_results.txt')
+plt.semilogy(-fea_sigma_y[0,:],np.abs(fea_sigma_y[1,:]), label = 'fenicsx')
 
-# plt.show()
-
-plt.show()
+plt.savefig('compare_uniform.png')
