@@ -1,6 +1,7 @@
 import numpy as np
 from ufl import sym, grad, Identity, tr, inner, Measure, TestFunction, TrialFunction
 import ufl
+import petsc4py.PETSc as PETSc
 
 from mpi4py import MPI
 from dolfinx import fem, io, plot
@@ -15,13 +16,14 @@ H = 1e4
 
 a = 500.
 P = -1/(2*a)
-n_el = 50
+n_el = 100
+
 domain = create_rectangle(
     MPI.COMM_WORLD,
     [np.array([-L/2,-H]), np.array([L/2, 0])],
     [n_el,n_el],
     cell_type=CellType.triangle,
-    diagonal= dolfinx.cpp.mesh.DiagonalType.crossed
+    diagonal = dolfinx.cpp.mesh.DiagonalType.crossed
 )
 
 dim = domain.topology.dim
@@ -34,7 +36,7 @@ def left(x):
 def right(x):
     return np.isclose(x[0], L/2, 1e-3)
 def top_f(x): # only for prescribed force
-    return np.isclose(x[1], 0, 1e-3) & ((x[0] > -a) & (x[0] < a))
+    return np.isclose(x[1], 0, 1e-3) & ((x[0] >= -a) & (x[0] <= a))
 def bot(x):
     return np.isclose(x[1], -H, 1e-3)
 
@@ -70,7 +72,7 @@ bcs = [
     fem.dirichletbc(u0y, bot_dofs, V.sub(1))
 ]
 
-#------------Kinematics-----------------#
+#------------------Kinematics-----------------#
 def epsilon(v):
     return sym(grad(v))
 
@@ -88,26 +90,32 @@ def sigma(v):
 
 ds = ufl.Measure("ds", domain=domain, subdomain_data=facet_marker) # measures
 
-t = dolfinx.fem.Constant(domain, (0.0, P)) # traction force
+t = fem.Constant(domain, (0.0, P)) # traction force
+
 # setup function spaces
 u = ufl.TrialFunction(V)
 v = ufl.TestFunction(V)
 # Bilinear form
 a = ufl.inner(sigma(u), epsilon(v)) * ufl.dx 
-L = ufl.inner(t, v) * ds(3) # no body force --  only traction
+L = ufl.dot(t, v) * ds(3) # no body force --  only traction
+
+test = dolfinx.fem.petsc.assemble_vector(dolfinx.fem.form(L))
+print(test[np.nonzero(test[:])])
 
 #--------solve problem------------------#
 uh= fem.Function(V, name="Displacement") 
 problem = fem.petsc.LinearProblem(a, L, u=uh, bcs=bcs)
 problem.solve()
+print('Starting linear solve')
 uh.x.scatter_forward()
-
+print('Linear solve done!')
 #------------Interpolate stress--------------#
 W = fem.functionspace(domain, ('DG', 1))
 sigma_expr = fem.Expression(sigma(uh)[1,1], W.element.interpolation_points()) # only interpolate sigma_yy
 sigma_sol = fem.Function(W)
 sigma_sol.interpolate(sigma_expr)
-sigma_sol.x.scatter_forward
+sigma_sol.x.scatter_forward()
+
 #----------Plotter----------------------#
 pyvista.start_xvfb()
 p = pyvista.Plotter(off_screen=True, window_size=(800, 600), shape=(1,1),
@@ -118,7 +126,7 @@ grid = pyvista.UnstructuredGrid(topology, cells, geometry)
 
 #grid['u'] = uh.x.array.reshape((geometry.shape[0], 2)) # add displacement to plotter
 
-grid.point_data['sigma_yy'] = sigma_sol.x.petsc_vec.array # add stress data
+grid.point_data['sigma_yy'] = sigma_sol.x.array # add stress data
 grid.set_active_scalars('sigma_yy')
 
 p.add_mesh(grid, show_edges=True)
@@ -134,19 +142,18 @@ p = pyvista.Plotter(off_screen=True, window_size=(800, 600), shape=(1,1),
 exclude_entities = facet_marker.find(0)
 marker_idx = np.full_like(facet_marker.values, True, dtype=np.bool_)
 marker_idx[exclude_entities] = False
-print(marker_idx)
+
 topology, cells, geometry = plot.vtk_mesh(domain,facet_marker.dim, facet_marker.indices[marker_idx]) # make sure function space is the same as stress function space
 grid = pyvista.UnstructuredGrid(topology, cells, geometry)
 grid.cell_data["Marker"] = facet_marker.values[marker_idx]
 p.add_mesh(grid)
 p.view_xy()
 
-p.screenshot('fsacets.png')
-
+p.screenshot('facets.png')
 
 #----------Extract solution at x=0------------#
 bb_tree = dolfinx.geometry.bb_tree(domain, domain.topology.dim)
-# points to extrat solution
+# points to extract solution
 y_points = y = np.linspace(0,-1000,100)
 x_points = np.zeros(len(y))
 z_points = np.zeros(len(y))
@@ -170,6 +177,9 @@ cells = np.array(cells, dtype=np.int32)
 sigma_values = sigma_sol.eval(points_on_proc, cells)
 
 print(np.array([y_points,sigma_values.reshape(-1)]))
+
+print(uh.x)
+print(dolfinx.la.norm(uh.x), len(uh.x.array))
 
 np.savetxt('FEA_results.txt',np.array([y_points,sigma_values.reshape(-1)]))
 

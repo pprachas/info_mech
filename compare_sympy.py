@@ -21,7 +21,7 @@ fig.axes.yaxis.set_inverted(True)
 plt.colorbar(fig)
 plt.title('Uniform load (By hand)')
 
-#--------Compare with sympy solution-----#
+#--------Compare solutions-----#
 p = P/(2*a)
 
 plt.figure()
@@ -35,7 +35,6 @@ plt.title('Uniform load (Sympy)')
 y = np.linspace(0,1000,1000)
 plt.figure()
 plt.semilogy(y,np.abs(sigma_y_uniform(P,a,0,y)), label = 'analytical', marker = 's')
-plt.semilogy(y,np.abs(sym_sigma_y(p,0,y,a)), label = 'sympy')
 plt.title('Uniform load')
 plt.xlabel(r'$y$-coordinate')
 plt.ylabel(r'$\sigma_{yy}$')
@@ -44,6 +43,7 @@ plt.legend()
 
 #--------Compare with FE solution------------#
 fea_sigma_y = np.loadtxt('fenicsx_scripts/FEA_results.txt')
-plt.semilogy(-fea_sigma_y[0,:],np.abs(fea_sigma_y[1,:]), label = 'fenicsx')
-
+plt.semilogy(-fea_sigma_y[0,:],np.abs(fea_sigma_y[1,:]), label = 'fenicsx', marker='o', fillstyle=None, markersize = 3)
+plt.semilogy(y,np.abs(sym_sigma_y(p,0,y,a)), label = 'sympy')
+plt.legend()
 plt.savefig('compare_uniform.png')
