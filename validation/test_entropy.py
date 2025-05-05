@@ -1,6 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import minmax_scale
+# import custom scripts
+import sys
+sys.path.append('..')
 from utils.analytical import sigma_y_uniform
+
 
 P = 1.0
 x = 0
@@ -9,6 +14,10 @@ y = 1e9
 np.random.seed(0)
 a = np.random.uniform(0,100,1000)
 sigma_y = sigma_y_uniform(P,a,x,y)
+
+
+# a = minmax_scale(a)
+# sigma_y = minmax_scale(sigma_y)
 
 # p(a)
 plt.figure()
@@ -37,13 +46,9 @@ plt.tight_layout()
 
 plt.figure()
 plt.scatter(a, sigma_y, marker = '.')
-plt.title('scatter plot')
+plt.title(f'y={y}')
 plt.xlabel('Width of load')
 plt.ylabel('Reaction force')
 plt.tight_layout()
 
 plt.show()
-
-
-
-

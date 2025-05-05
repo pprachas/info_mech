@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+# import custom scripts
+import sys
+sys.path.append('..')
 from utils.analytical import sigma_y_point, sigma_y_uniform
 
 

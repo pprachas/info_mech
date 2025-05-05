@@ -3,6 +3,9 @@ from sklearn.neighbors import NearestNeighbors
 import jax
 import jax.numpy as jnp
 from jax.numpy.linalg import norm
+# import custom scripts
+import sys
+sys.path.append('..')
 from utils.mi import knn_distances
 
 # Create synthetic data
