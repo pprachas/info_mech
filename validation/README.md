@@ -10,5 +10,5 @@
      * KSG inherently isn't differentiable due to thresholding (step function which means zero gradeint everywhere except at threshold)
        * We used sigmoid with $alpha$ parameter comtrolling the sharpness
        * Validated the implementation againt NPEET and matches prety well
+       * validated autograd with finite difference
       * Some small noise is needed to make sure the points are not at boundaries of knn
-      * 
