@@ -8,7 +8,7 @@ from sklearn.preprocessing import minmax_scale, StandardScaler
 # import custom scripts
 import sys
 sys.path.append('..')
-from utils.symbolic_int import  sym_sigma_y
+from utils.symbolic import  sym_sigma_y
 from utils.analytical import sigma_y_uniform
 from utils.mi import ksg
 

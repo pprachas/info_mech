@@ -6,7 +6,7 @@ import sys
 sys.path.append('..')
 
 from utils.analytical import sigma_y_point, sigma_y_uniform
-from utils.symbolic_int import  sym_sigma_y
+from utils.symbolic import  sym_sigma_y
 
 
 x_lin = np.linspace(-1000,1000,5000)
@@ -51,8 +51,11 @@ plt.tight_layout()
 plt.legend()
 
 #---------Compare with FE solution------------#
-fea_sigma_y = np.loadtxt('fenicsx_scripts/FEA_results.txt')
+fea_sigma_y = np.loadtxt('../fenicsx_scripts/FEA_results.txt')
 plt.semilogy(-fea_sigma_y[0,:],np.abs(fea_sigma_y[1,:]), label = 'fenicsx', marker='o', fillstyle=None, markersize = 3)
 plt.semilogy(y_lin,np.abs(sigma_y(0,y_lin,a)), label = 'sympy')
 plt.legend()
 plt.savefig('compare_uniform.png')
+
+print(soln)
+plt.show()

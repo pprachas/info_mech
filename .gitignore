@@ -1,1 +1,5 @@
 /fenics_legacy
+*.png
+*.pdf
+*.txt
+*.csv
