@@ -9,9 +9,7 @@ It uses [pytest](https://docs.pytest.org/) for automated testing.
 
 1. **Entropy identity test (`test_entropy`)**  
    - Verifies  
-     $$
-     I(X;Y) \approx H(X) + H(Y) - H(X,Y)
-     $$  
+     $$I(X;Y) \approx H(X) + H(Y) - H(X,Y)$$  
      within a small tolerance.
 
 2. **Volume test (`test_volume`)**  
