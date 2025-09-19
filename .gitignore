@@ -1,5 +1,9 @@
 /fenics_legacy
+tests/legacy_test_entropy.py
 *.png
 *.pdf
 *.txt
 *.csv
+*.xdmf
+*.h5
+*.o*

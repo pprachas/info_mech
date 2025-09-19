@@ -124,6 +124,23 @@ def sym_even_legendre_series(num_coeff):
     p=p.subs(s,s/a_lim)
     
     return simplify(p)
+
+def sym_legendre_series(num_coeff):
+    s = symbols('s') # independent variable
+    c = symbols(f'c_1:{num_coeff+1}')
+    m = symbols('m') # Load magnitude  
+
+    a_lim = symbols('a_lim', positive=True) # a is always positive
+
+    p = m/(2*a_lim) # by definition the zeroth term for orthogonal polynomials to enfore \int p(s) = 1
+
+    for n,c_n in enumerate(c):
+        p += c_n*legendre(n+1,s)
+    
+    # transform variables to interval; legendre polymoial are in range [-1,1]
+    p=p.subs(s,s/a_lim)
+    
+    return simplify(p)
         
 def mp_vectorize(func):
     """

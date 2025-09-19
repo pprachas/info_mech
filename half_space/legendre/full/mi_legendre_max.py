@@ -6,16 +6,14 @@ from sklearn.preprocessing import StandardScaler
 from npeet import entropy_estimators as ee
 from pathlib import Path
 
-import sys 
-sys.path.append('../..')
 
-from utils.postprocess import normalize_signal, get_grid_mi, greedy_sensor_selection
+from postprocess import normalize_signal, get_grid_mi, greedy_sensor_selection
 
 #-------------------Create files---------------------------------#
 Path('./plots').mkdir(parents=True, exist_ok=True)
 Path('./sensor_loc').mkdir(parents=True, exist_ok=True)
 
-plt.style.use('../jeff_style.mplstyle')
+plt.style.use('../../jeff_style.mplstyle')
 
 # ------------------------- Configuration -------------------------#
 num_coeff = 3

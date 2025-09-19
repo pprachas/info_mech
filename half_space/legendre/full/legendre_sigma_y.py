@@ -6,10 +6,11 @@ import mpmath as mp
 import pandas as pd
 from pathlib import Path
 
-import sys 
-sys.path.append('../..')
 
-from utils.symbolic import sym_even_legendre_series, sym_sigma_y, mp_vectorize
+from symbolic import sym_even_legendre_series, sym_sigma_y, mp_vectorize
+
+Path('./coeffs').mkdir(parents=True, exist_ok=True)
+
 
 mp.mp.dps = 70
 num_samples = 5000 # number of load samples
@@ -22,7 +23,7 @@ num_coeff=int(sys.argv[1])
 c = symbols(f'c_1:{num_coeff_max+1}', real = True)
 
 # load file solution
-f_name = '../integration_soln.txt'
+f_name = 'legendre_soln.txt'
 with open(f_name, 'r') as file:
     soln_str = file.read()
 
@@ -46,7 +47,8 @@ coeffs[:,:num_coeff] = coeffs_n
 
 np.savetxt(f'coeffs/legendre_coeffs{num_coeff}.txt',coeffs)
 
-x_nums = np.arange(0,2*a + a/10,a/10)
+w = 2*a + a/10
+x_nums = np.arange(-w,w,a/10)
 y_nums = np.logspace(-4,9,27)
 
 print(y_nums)

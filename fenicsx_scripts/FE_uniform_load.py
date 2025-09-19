@@ -182,4 +182,3 @@ print(uh.x)
 print(dolfinx.la.norm(uh.x), len(uh.x.array))
 
 np.savetxt('FEA_results.txt',np.array([y_points,sigma_values.reshape(-1)]))
-
