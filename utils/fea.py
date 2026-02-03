@@ -1,10 +1,13 @@
 import numpy as np
 from dolfinx import fem, io, plot
 import dolfinx.fem.petsc
+from dolfinx.fem import form
+from dolfinx.fem.petsc import assemble_matrix, assemble_vector, apply_lifting, set_bc
 import sympy as sp
-from .symbolic import sym_legendre_series
+from symbolic import sym_legendre_series,sym_even_legendre_series
 from dolfinx.io import XDMFFile, gmshio
 from mpi4py import MPI
+from petsc4py import PETSc
 
 from ufl import sym, grad, Identity, tr, inner, Measure, TestFunction, TrialFunction
 import ufl
@@ -40,7 +43,7 @@ def eval_points(domain,func,points):
     cells = np.array(cells, dtype=np.int32)
     return func.eval(points_on_proc, cells)
 
-def apply_load(coeff, mag, a_lim_num, t):
+def apply_load(coeff, mag, a_lim_num, t, load_case):
     '''
     Interpolate legendre loads (in sympy) into FE space
     '''
@@ -49,7 +52,10 @@ def apply_load(coeff, mag, a_lim_num, t):
     m = sp.symbols(' m')
     a_lim = sp.symbols('a_lim', positive=True)
     c = sp.symbols(f'c_1:{len(coeff)+1}')
-    p = sym_legendre_series(len(coeff))# applied load in sympy form
+    if load_case == 'full':
+        p = sym_legendre_series(len(coeff))# applied load in sympy form
+    elif load_case == 'even':
+        p = sym_even_legendre_series(len(coeff))
 
     p = p.subs({a_lim:a_lim_num, m:mag})
     p = sp.simplify(p.subs([c[ii], coeff[ii]] for ii in range(len(coeff))))
@@ -72,7 +78,316 @@ def sigma(v, E, nu):
         mu = E/2/(1 + nu)
         return lmbda * tr(epsilon(v)) * Identity(len(v)) + 2 * mu * epsilon(v)
 
-def run_fea(domain, L,H, coeff):
+def run_linear_fea_traction(domain, L,H, coeff, load_case = 'full'):
+    '''
+    Run linear fea with aplpied traction on top boundary
+    '''
+
+    dim = domain.topology.dim
+    degree = 2
+    V = fem.functionspace(domain, ("Lagrange", degree, (dim,))) # Function space as Lagrange shape functions with dimensions dim
+    #-----------Marking Facets for Boundary conditions----------------#
+    def left(x):
+        return np.isclose(x[0], -L/2, 1e-6)
+    def right(x):
+        return np.isclose(x[0], L/2, 1e-6)
+    def top(x): # only for prescribed force
+        return np.isclose(x[1], H, 1e-6)
+    def bot(x):
+        return np.isclose(x[1], 0, 1e-6)
+
+    # getting entities
+    left_facets = dolfinx.mesh.locate_entities_boundary(domain,dim-1,left)
+    right_facets = dolfinx.mesh.locate_entities_boundary(domain,dim-1,right)
+    top_facets = dolfinx.mesh.locate_entities_boundary(domain,dim-1,top)
+    bot_facets = dolfinx.mesh.locate_entities_boundary(domain,dim-1,bot)
+
+    num_facets = domain.topology.index_map(dim - 1).size_local # get number of facets in system
+    markers = np.zeros(num_facets, dtype=np.int32) # vector of markers -- initialize as 0
+    # mark facets
+    markers[left_facets] = 1 
+    markers[right_facets] = 2
+    markers[top_facets] = 3
+    markers[bot_facets] = 4
+
+    facet_marker = dolfinx.mesh.meshtags(domain, dim - 1, np.arange(num_facets, dtype=np.int32), markers) # mark facets
+
+    # Mark Dirichlet BCs
+    Vx, _ = V.sub(0).collapse() # x dof subspace
+    Vy, _ = V.sub(1).collapse() # y dof subspace
+    left_dofs = dolfinx.fem.locate_dofs_topological((V.sub(0), Vx), dim-1, facet_marker.find(1))
+    right_dofs = dolfinx.fem.locate_dofs_topological((V.sub(0), Vx), dim-1, facet_marker.find(2))
+    bot_dofs = dolfinx.fem.locate_dofs_topological(V, dim-1, facet_marker.find(4))
+
+    #--------traction force (legendre from sympy)-----#
+    #Load parameters
+    mag = 1 # magnitude
+    a_lim_num = L/2 # width
+    u0 = fem.Function(V)
+
+    bcs = [fem.dirichletbc(u0, bot_dofs)]
+
+    #---------------Constitutive Model------------#
+    E = fem.Constant(domain, 100.0)
+    nu = fem.Constant(domain, 0.0)
+
+    #--------traction force (legendre from sympy)-----#
+    #Load parameters
+    mag = 1 # magnitude
+    a_lim_num = L/2 # width
+    t = fem.Function(V)
+
+    t = apply_load(coeff,mag,a_lim_num,t, load_case)
+
+    # #---------------Define weak form----------------#
+    ds = ufl.Measure("ds", domain=domain, subdomain_data=facet_marker) # measures
+
+    #setup function spaces
+    u = ufl.TrialFunction(V)
+    v = ufl.TestFunction(V)
+    # Bilinear form
+    a = ufl.inner(sigma(u, E,nu), epsilon(v)) * ufl.dx 
+    l = ufl.dot(t, v) * ds(3) # no body force --  only traction
+
+    #--------solve problem------------------#
+    uh= fem.Function(V, name="Displacement") 
+    petsc_options = {
+    "ksp_type": "preonly",
+    "pc_type": "cholesky",
+    "pc_factor_mat_solver_type": "mumps",
+    }
+    problem = fem.petsc.LinearProblem(a, l, u=uh, bcs=bcs, petsc_options = petsc_options)
+    problem.solve()
+
+    uh.x.scatter_forward()
+
+    return a, l, V, uh, bcs, u0
+
+def run_linear_fea_displacement(domain, L,H, coeff, load_case = 'full'):
+    '''
+    Run linear fea with aplpied displacement on top boundary
+    '''
+
+    dim = domain.topology.dim
+    degree = 2 
+    V = fem.functionspace(domain, ("Lagrange", degree, (dim,))) # Function space as Lagrange shape functions with dimensions dim
+    #-----------Marking Facets for Boundary conditions----------------#
+    def left(x):
+        return np.isclose(x[0], -L/2, 1e-6)
+    def right(x):
+        return np.isclose(x[0], L/2, 1e-6)
+    def top(x): # only for prescribed force
+        return np.isclose(x[1], H, 1e-6)
+    def bot(x):
+        return np.isclose(x[1], 0, 1e-6)
+
+    # getting entities
+    left_facets = dolfinx.mesh.locate_entities_boundary(domain,dim-1,left)
+    right_facets = dolfinx.mesh.locate_entities_boundary(domain,dim-1,right)
+    top_facets = dolfinx.mesh.locate_entities_boundary(domain,dim-1,top)
+    bot_facets = dolfinx.mesh.locate_entities_boundary(domain,dim-1,bot)
+
+    num_facets = domain.topology.index_map(dim - 1).size_local # get number of facets in system
+    markers = np.zeros(num_facets, dtype=np.int32) # vector of markers -- initialize as 0
+    # mark facets
+    markers[left_facets] = 1 
+    markers[right_facets] = 2
+    markers[top_facets] = 3
+    markers[bot_facets] = 4
+
+    facet_marker = dolfinx.mesh.meshtags(domain, dim - 1, np.arange(num_facets, dtype=np.int32), markers) # mark facets
+
+    # Mark Dirichlet BCs
+    Vx, _ = V.sub(0).collapse() # x dof subspace
+    Vy, _ = V.sub(1).collapse() # y dof subspace
+    left_dofs = dolfinx.fem.locate_dofs_topological((V.sub(0), Vx), dim-1, facet_marker.find(1))
+    right_dofs = dolfinx.fem.locate_dofs_topological((V.sub(0), Vx), dim-1, facet_marker.find(2))
+    top_dofs = dolfinx.fem.locate_dofs_topological(V, dim-1, facet_marker.find(3))
+    bot_dofs = dolfinx.fem.locate_dofs_topological(V, dim-1, facet_marker.find(4))
+
+    #--------traction force (legendre from sympy)-----#
+    # Applied nonhomogenous Dirichlet BCs
+    mag = 1 # magnitude
+    a_lim_num = L/2 # width
+    d = fem.Function(V)
+    d = apply_load(coeff,mag,a_lim_num,d, load_case)
+
+    u0 = fem.Function(V)
+
+    bcs = [fem.dirichletbc(u0, bot_dofs), fem.dirichletbc(d,top_dofs)]
+
+    #---------------Constitutive Model------------#
+    E = fem.Constant(domain, 100.0)
+    nu = fem.Constant(domain, 0.0)
+
+
+    # #---------------Define weak form----------------#
+    ds = ufl.Measure("ds", domain=domain, subdomain_data=facet_marker) # measures
+
+    #setup function spaces
+    u = ufl.TrialFunction(V)
+    v = ufl.TestFunction(V)
+
+    t = fem.Function(V)
+
+    # Bilinear form
+    a = ufl.inner(sigma(u, E,nu), epsilon(v)) * ufl.dx 
+    l = ufl.dot(t,v)*ds
+
+    #--------solve problem------------------#
+    uh= fem.Function(V, name="Displacement")
+    petsc_options = {
+    "ksp_type": "preonly",
+    "pc_type": "cholesky", 
+    "pc_factor_mat_solver_type": "mumps",
+    }
+    problem = fem.petsc.LinearProblem(a, l, u=uh, bcs=bcs, petsc_options=petsc_options)
+    problem.solve()
+
+    uh.x.scatter_forward()
+
+    return a, l, V, uh, bcs, u0
+
+def compute_stress(W, u, E, nu):
+    sigma_expr = fem.Expression(sigma(u, E, nu), W.element.interpolation_points())
+    sigma_u = fem.Function(W)
+    sigma_u.interpolate(sigma_expr)
+    sigma_u.x.scatter_forward()
+    return sigma_u
+
+def compute_reaction_force(V,a,u,l,bcs,u0):
+    v_reac = fem.Function(V)
+
+    residual = ufl.action(a, u) - l
+
+    weak_form = form(ufl.action(residual,v_reac))
+
+    def one(x):
+        values = np.zeros((1,x.shape[1]))
+        values[0] = 1.0
+        return values
+    u0.x.array[:]=0
+    u0.sub(1).interpolate(one)
+    fem.set_bc(v_reac.x.petsc_vec,bcs)
+
+    return fem.assemble_vector(form(residual)), fem.assemble_scalar(weak_form)
+
+def solve_batch(domain,a,l,V,bcs, coeffs, d, mag, a_lim_num, load_case):
+    '''
+    Petsc Linear KSP solver that reuses the matrix factorization
+    '''
+    #--------solve problem------------------#
+    uh = fem.Function(V, name="Displacement") # solution vector
+    a_compiled = form(a)
+    l_compiled = form(l)
+
+    A_lifting = assemble_matrix(a_compiled, bcs=bcs)
+    A_lifting.assemble()
+
+    # setup rhs with cholesky decomposition
+    solver = PETSc.KSP().create(domain.comm)
+    solver.setOperators(A_lifting)
+    solver.setType(PETSc.KSP.Type.PREONLY)
+    solver.getPC().setType(PETSc.PC.Type.CHOLESKY) 
+    solver.getPC().setFactorSolverType("mumps")
+
+    u_all = []
+
+    # loop through lhs
+    for coeff in coeffs:
+        d = apply_load(coeff,mag,a_lim_num,d, load_case)
+        b_lifting = assemble_vector(l_compiled)
+        apply_lifting(b_lifting, [a_compiled], bcs=[bcs])
+        b_lifting.ghostUpdate(addv=PETSc.InsertMode.ADD_VALUES, mode=PETSc.ScatterMode.REVERSE)
+        set_bc(b_lifting, bcs)
+        b_lifting.ghostUpdate(addv=PETSc.InsertMode.INSERT_VALUES, mode=PETSc.ScatterMode.FORWARD) 
+
+        solver.solve(b_lifting, uh.x.petsc_vec)
+        uh.x.petsc_vec.ghostUpdate(addv=PETSc.InsertMode.INSERT_VALUES, mode=PETSc.ScatterMode.FORWARD)
+
+        u_all.append(uh.copy())
+    return u_all
+def run_linear_fea_displacement_batch(domain, L,H, coeffs , load_case = 'full'):
+    '''
+    Run linear fea with applied displacement on top boundary with bathced linear solver
+    '''
+
+    dim = domain.topology.dim
+    degree = 2 
+    V = fem.functionspace(domain, ("Lagrange", degree, (dim,))) # Function space as Lagrange shape functions with dimensions dim
+    #-----------Marking Facets for Boundary conditions----------------#
+    def left(x):
+        return np.isclose(x[0], -L/2, 1e-6)
+    def right(x):
+        return np.isclose(x[0], L/2, 1e-6)
+    def top(x): # only for prescribed force
+        return np.isclose(x[1], H, 1e-6)
+    def bot(x):
+        return np.isclose(x[1], 0, 1e-6)
+
+    # getting entities
+    left_facets = dolfinx.mesh.locate_entities_boundary(domain,dim-1,left)
+    right_facets = dolfinx.mesh.locate_entities_boundary(domain,dim-1,right)
+    top_facets = dolfinx.mesh.locate_entities_boundary(domain,dim-1,top)
+    bot_facets = dolfinx.mesh.locate_entities_boundary(domain,dim-1,bot)
+
+    num_facets = domain.topology.index_map(dim - 1).size_local # get number of facets in system
+    markers = np.zeros(num_facets, dtype=np.int32) # vector of markers -- initialize as 0
+    # mark facets
+    markers[left_facets] = 1 
+    markers[right_facets] = 2
+    markers[top_facets] = 3
+    markers[bot_facets] = 4
+
+    facet_marker = dolfinx.mesh.meshtags(domain, dim - 1, np.arange(num_facets, dtype=np.int32), markers) # mark facets
+
+    # Mark Dirichlet BCs
+    Vx, _ = V.sub(0).collapse() # x dof subspace
+    Vy, _ = V.sub(1).collapse() # y dof subspace
+    left_dofs = dolfinx.fem.locate_dofs_topological((V.sub(0), Vx), dim-1, facet_marker.find(1))
+    right_dofs = dolfinx.fem.locate_dofs_topological((V.sub(0), Vx), dim-1, facet_marker.find(2))
+    top_dofs = dolfinx.fem.locate_dofs_topological(V, dim-1, facet_marker.find(3))
+    bot_dofs = dolfinx.fem.locate_dofs_topological(V, dim-1, facet_marker.find(4))
+
+    #--------traction force (legendre from sympy)-----#
+    # Applied nonhomogenous Dirichlet BCs
+    mag = 1 # magnitude
+    a_lim_num = L/2 # width
+    d = fem.Function(V)
+    # d = apply_load(coeff,mag,a_lim_num,d, load_case)
+
+    u0 = fem.Function(V)
+
+    bcs = [fem.dirichletbc(u0, bot_dofs), fem.dirichletbc(d,top_dofs)]
+
+    #---------------Constitutive Model------------#
+    E = fem.Constant(domain, 100.0)
+    nu = fem.Constant(domain, 0.0)
+
+
+    # #---------------Define weak form----------------#
+    ds = ufl.Measure("ds", domain=domain, subdomain_data=facet_marker) # measures
+
+    #setup function spaces
+    u = ufl.TrialFunction(V)
+    v = ufl.TestFunction(V)
+
+    t = fem.Function(V)
+
+    # Bilinear form
+    a = ufl.inner(sigma(u, E,nu), epsilon(v)) * ufl.dx 
+    l = ufl.dot(t,v)*ds
+
+    #-----------Solve problem---------------------#
+    u_all = solve_batch(domain,a,l,V,bcs, coeffs, d, mag, a_lim_num, load_case)
+
+    return a, l, V, u_all, bcs, u0
+
+def run_linear_fea_traction_batch(domain, L,H, coeffs, load_case = 'full'):
+    '''
+    Run linear fea with aplpied traction on top boundary
+    '''
+
     dim = domain.topology.dim
     degree = 2 
     V = fem.functionspace(domain, ("Lagrange", degree, (dim,))) # Function space as Lagrange shape functions with dimensions dim
@@ -109,17 +424,17 @@ def run_fea(domain, L,H, coeff):
     right_dofs = dolfinx.fem.locate_dofs_topological((V.sub(0), Vx), dim-1, facet_marker.find(2))
     bot_dofs = dolfinx.fem.locate_dofs_topological(V, dim-1, facet_marker.find(4))
 
+    #--------traction force (legendre from sympy)-----#
+    #Load parameters
+    mag = 1 # magnitude
+    a_lim_num = L/2 # width
     u0 = fem.Function(V)
 
-    bcs = [
-
-        fem.dirichletbc(u0, bot_dofs)
-    ]
+    bcs = [fem.dirichletbc(u0, bot_dofs)]
 
     #---------------Constitutive Model------------#
-    E = fem.Constant(domain, 1.0)
+    E = fem.Constant(domain, 100.0)
     nu = fem.Constant(domain, 0.0)
-
 
     #--------traction force (legendre from sympy)-----#
     #Load parameters
@@ -127,7 +442,7 @@ def run_fea(domain, L,H, coeff):
     a_lim_num = L/2 # width
     t = fem.Function(V)
 
-    t = apply_load(coeff,mag,a_lim_num,t)
+    # t = apply_load(coeff,mag,a_lim_num,t)
 
     # #---------------Define weak form----------------#
     ds = ufl.Measure("ds", domain=domain, subdomain_data=facet_marker) # measures
@@ -140,40 +455,6 @@ def run_fea(domain, L,H, coeff):
     l = ufl.dot(t, v) * ds(3) # no body force --  only traction
 
     #--------solve problem------------------#
-    uh= fem.Function(V, name="Displacement") 
-    problem = fem.petsc.LinearProblem(a, l, u=uh, bcs=bcs)
-    problem.solve()
-    print('Starting linear solve')
-    uh.x.scatter_forward()
-    print('Linear solve done!')
+    u_all = solve_batch(domain,a,l,V,bcs, coeffs, t, mag, a_lim_num, load_case)
 
-    return a, l, uh, bcs, u0
-
-def compute_stress(W, u, E, nu):
-    sigma_expr = fem.Expression(sigma(u, E, nu), W.element.interpolation_points())
-    sigma_u = fem.Function(W)
-    sigma_u.interpolate(sigma_expr)
-    sigma_u.x.scatter_forward()
-    return sigma_u
-
-def compute_reaction_force(V,a,u,l,bcs,u0):
-    v_reac = fem.Function(V)
-
-    residual = ufl.action(a, u) - l
-
-    weak_form = fem.form(ufl.action(residual,v_reac))
-
-    def one(x):
-        values = np.zeros((1,x.shape[1]))
-        values[0] = 1.0
-        return values
-    u0.sub(1).interpolate(one)
-    fem.set_bc(v_reac.x.petsc_vec,bcs)
-
-
-    return fem.assemble_scalar(weak_form)
-
-
-
-
-
+    return a, l, V, u_all, bcs, u0

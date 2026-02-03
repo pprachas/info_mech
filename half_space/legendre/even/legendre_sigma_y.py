@@ -5,6 +5,7 @@ from sympy import *
 import mpmath as mp
 import pandas as pd
 from pathlib import Path
+import sys
 
 from symbolic import sym_even_legendre_series, sym_sigma_y, mp_vectorize
 
@@ -32,7 +33,7 @@ sigma_y = lambdify([*c,x,y,m,a_lim], soln, modules=['mpmath'])
 sigma_y_vec = mp_vectorize(sigma_y)
 #------------------Numerically Evaluate function---------------------#
 a=100
-m=1000
+m=1
 
 rng = np.random.default_rng(0)
 
@@ -45,9 +46,9 @@ coeffs[:,:num_coeff] = coeffs_n
 
 np.savetxt(f'coeffs/legendre_coeffs{num_coeff}.txt',coeffs)
 
-x_nums = np.arange(0,2*a + a/10,a/10)
-y_nums = np.logspace(-4,9,27)
-
+w = 2*a + a/10
+x_nums = np.arange(-w,w,a/10)
+y_nums = np.logspace(-4,6,21)
 print(y_nums)
 
 df= []

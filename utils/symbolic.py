@@ -69,7 +69,7 @@ def sym_sigma_y(p, polynomial = False):
             integrated = integrate(integrand,s)
 
             integrated = complex_to_atan(simplify(expand_log(integrated,force=True)))
-            print(integrated)
+
             sigma_y_sym += integrated # symbolic integration
         
         soln = (-2/pi)*y**3*sigma_y_sym
@@ -111,7 +111,7 @@ def sym_fourier_series(interval, coeffs):
 def sym_even_legendre_series(num_coeff):
     s = symbols('s') # independent variable
     c = symbols(f'c_1:{num_coeff+1}')
-    m = symbols('m', postive=True) # Load magnitude  
+    m = symbols('m') # Load magnitude  
 
     a_lim = symbols('a_lim', positive=True) # a is always positive
 
@@ -135,7 +135,8 @@ def sym_legendre_series(num_coeff):
     p = m/(2*a_lim) # by definition the zeroth term for orthogonal polynomials to enfore \int p(s) = 1
 
     for n,c_n in enumerate(c):
-        p += c_n*legendre(n+1,s)
+
+        p += c_n*legendre((n+1),s)
     
     # transform variables to interval; legendre polymoial are in range [-1,1]
     p=p.subs(s,s/a_lim)

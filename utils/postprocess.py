@@ -5,7 +5,7 @@ def normalize_signal(signal, scaler):
     """Standardize and zero-out numerically small values."""
     scaler.fit(signal)
     scaled = scaler.transform(signal)
-    scaled[np.isclose(signal - scaler.mean_, 0, atol=1e-12)] = 0
+    scaled[np.isclose(signal - scaler.mean_, 0, atol=1e-7)] = 0
     return scaled
 
 def get_grid_mi(sensor_list, sigma_y, coeff_scaled, scaler):

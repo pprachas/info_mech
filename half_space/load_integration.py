@@ -44,6 +44,12 @@ print(f'difference between loaded and orignal solution: {simplify(soln-loaded_so
 
 #------------------------full legendre integration------------------------------#
 print('FULL LEGENDRE SOLUTION')
+# Set up symbols -- we let s be dummy varaible integrated in superposition equation
+x,s = symbols('x s')
+y,a_lim,m = symbols('y a_lim m', real = True, positive=True)
+num_coeff_max=6 # Use 6 term (even) legendre polynomials
+c = symbols(f'c_1:{num_coeff_max+1}')
+
 p=sym_legendre_series(num_coeff_max) # Applied load
 
 p_poly = Poly(p,s) 

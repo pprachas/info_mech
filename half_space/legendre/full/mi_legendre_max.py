@@ -1,11 +1,11 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from pathlib import Path
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from npeet import entropy_estimators as ee
 from pathlib import Path
-
 
 from postprocess import normalize_signal, get_grid_mi, greedy_sensor_selection
 
@@ -26,58 +26,64 @@ a = 100  # Normalization factor for coordinates
 df = pd.read_csv(f'sigma_y/legendre_coeffs{num_coeff}.csv', index_col=[0, 1], header=[0])
 sigma_y = df.to_numpy().reshape(num_samples, -1, df.shape[1]).transpose(2, 1, 0)
 
+print(sigma_y.shape)
+
 # Extract spatial coordinates
 x = df.columns.to_numpy().astype(float)
 y = df.index.get_level_values(1)[:sigma_y.shape[1]].to_numpy()
 
 # Load and scale Legendre coefficients
 coeffs = np.loadtxt(f'coeffs/legendre_coeffs{num_coeff}.txt')[:, :num_coeff]
+print(coeffs.shape)
 scaler = StandardScaler()
 coeff_scaled = scaler.fit_transform(coeffs)
 
 # ------------------------- Run Selection -------------------------#
 sensor_indices, sensor_signals, cmi_history = greedy_sensor_selection(num_sensors, sigma_y, coeff_scaled, scaler)
 
-print(len(cmi_history), sensor_indices)
-
 # Save sensor indices
 np.savetxt(f'sensor_loc/coeffs{num_coeff}.txt', np.array(sensor_indices))
 # ------------------------- Plot CMI Maps -------------------------#
 x_grid, y_grid = np.meshgrid(x / a, y / a)
-fig, axes = plt.subplots(1, num_sensors+1, figsize=(3 * (num_sensors+1), 3))
-fig.suptitle(f'{num_coeff} Legendre Coefficients')
+fig, axes = plt.subplots(1, num_sensors, figsize=(3 * (num_sensors), 3), constrained_layout=True)
+fig.suptitle(fr'$d_x = {num_coeff}$')
 # if num_sensors == 1:
 #     axes = [axes]  # Ensure iterable
 
-for ii in range(num_sensors+1):
+for ii in range(num_sensors):
     ax = axes[ii]
     cmi = cmi_history[ii]
-    levels = np.linspace(np.min(cmi), np.max(cmi), 15)
+    levels = np.linspace(np.min(cmi_history), np.max(cmi_history), 15)
 
-    contour = ax.contourf(x_grid, y_grid, cmi, levels=levels, cmap='YlOrRd')
+    contour = ax.contourf(x_grid, y_grid, cmi, levels=levels, cmap='Greys')
     ax.set_yscale('log')
     ax.invert_yaxis()
     ax.set_xlabel(r'$\displaystyle{\sfrac{x}{a}}$')
     ax.set_ylabel(r'$\displaystyle{\sfrac{y}{a}}$')
 
     # Plot all candidate locations
-    ax.plot(x_grid, y_grid, marker='.', ls='none', c='k', markersize=1.0)
-    # Add individual colorbar for this axis
-    cbar = fig.colorbar(contour, ax=ax, label='MI Gain',orientation='horizontal',pad=0.2, aspect=25)
-    tick_locs = np.linspace(np.min(cmi), np.max(cmi), 5)  # Only 3 ticks
-    cbar.set_ticks(tick_locs)
-    cbar.set_ticklabels([f"{tick:.2f}" for tick in tick_locs])
+    ax.plot(x_grid, y_grid, marker='.', ls='none', c=(0.7,0.5,0.5), markersize=1.0, label = 'Candidate sensor')
 
     # Plot selected sensors up to this step
     if ii != 0:
         for jj in range(ii):
             y_idx, x_idx = sensor_indices[jj]
-            ax.plot(x_grid[y_idx, x_idx], y_grid[y_idx, x_idx], marker='X', ls='none',
-                    c='blue', markersize=10)
+            ax.plot(x_grid[y_idx, x_idx], y_grid[y_idx, x_idx], marker='*', ls='none',
+                    c='r', markersize=10, label = 'Selected sensor')
 
     ax.set_title(f'Sensor {ii + 1}')
 
 # Shared colorbar
-plt.tight_layout()
-plt.savefig(f'plots/all_cmi_maps_coeffs{num_coeff}.pdf')
-plt.show()
+cbar = fig.colorbar(
+    contour,
+    ax=axes,                   # apply to all axes
+    orientation='horizontal',
+    fraction=1.0,         
+    pad=0.10,                  # 10% of subplot height away from the axes
+    aspect = 100,
+    label='MI Gain'
+)
+# plt.tight_layout()
+plt.savefig(f'plots/all_cmi_maps_coeffs{num_coeff}_full.pdf', bbox_inches ='tight')
+plt.close()
+

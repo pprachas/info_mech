@@ -7,3 +7,9 @@ tests/legacy_test_entropy.py
 *.xdmf
 *.h5
 *.o*
+*.npz
+fenicsx_mi/bayes_opt/fea_nodal_reaction.py
+fenicsx_mi/bayes_opt/fea_traction_reaction.py
+fenicsx_mi/bayes_opt/mi_field_calc.py
+fenicsx_mi/bayes_opt/plot_mi_field.py
+fenicsx_mi/bayes_opt/test_mat_factorize.py

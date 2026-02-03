@@ -5,7 +5,7 @@
 #$ -N linear_fea  # Give job a name
 #$ -j y              # Merge the error and output streams into a single file
 #$ -m ea
-#$ -t 1-500
+#$ -t 1-5
 
 module load miniconda/23.1.0
 conda activate fenicsx

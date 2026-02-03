@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler
 
 import sys 
 sys.path.append('../..')
-from utils.custom_ee import entropy_r
+from custom_ee import entropy_r
 
 
 L = 100
@@ -42,6 +42,7 @@ for H in H_all:
 mi = np.array(mi)
 Hx = np.array(Hx)
 
+print(Hx)
 plt.figure()
 plt.title('Depth vs MI')
 plt.plot(np.array(H_all)/L,mi/Hx, marker = 'o')

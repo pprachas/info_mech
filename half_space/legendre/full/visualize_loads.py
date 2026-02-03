@@ -21,17 +21,17 @@ p=sym_legendre_series(num_coeff_max) # Applied load
 load = lambdify([c,s,a_lim,m], p, modules=['numpy']) # using numpy is fine here
 
 #--------------Load coefficients------------#
-coeffs = np.loadtxt('coeffs/legendre_coeffs4.txt')
+coeffs = np.loadtxt(f'coeffs/legendre_coeffs1.txt')
 
 a=100
-m_num=100
+m_num=1000
 x_load = np.linspace(-a,a,100)
 colors = plt.cm.gray(np.linspace(0,1,70))
 
 plt.figure(figsize=(3,3))
 
-# for ii in range(2):
-plt.plot(x_load,load(coeffs[1],x_load,a,m_num), c=colors[1])
+for ii in range(10):
+    plt.plot(x_load,load(coeffs[ii],x_load,a,m_num), c=colors[ii])
 
 plt.axis('off')
 plt.savefig('loads.pdf')

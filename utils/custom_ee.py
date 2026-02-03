@@ -45,8 +45,8 @@ def entropy_r(x,y,k=3,base=2, vol=False):
     
     if vol == True:
         # Volume approximation
-        cx = 2**dx
-        cy = 2**dy
+        cx = 2**dx # unit cube length is is 2r
+        cy = 2**dy # unit cube length is is 2r
         Volx = cx*(len(x)/k*r_approx)**(dx/(dx+dy))
         Voly = cy*(len(y)/k*r_approx)**(dy/(dx+dy))
         Volxy = cx*cy*len(x)/k*r_approx

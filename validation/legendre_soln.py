@@ -4,10 +4,8 @@ import matplotlib.pyplot as plt
 from sympy import *
 import mpmath as mp
 
-import sys 
-sys.path.append('..')
 
-from utils.symbolic import sym_even_legendre_series, sym_sigma_y, mp_vectorize
+from symbolic import sym_even_legendre_series, sym_legendre_series,sym_sigma_y, mp_vectorize
 
 mp.mp.dps=50
 
@@ -30,13 +28,12 @@ y_lin = np.linspace(1e-6,400,100)
 
 x_mesh,y_mesh = np.meshgrid(x_lin,y_lin)
 
-p=sym_even_legendre_series(num_coeff) # Applied load
+p=sym_legendre_series(num_coeff) # Applied load
 
 
 p_poly = Poly(p,s) 
 print(f'Applied Load: {p}')
 print(f'Load Magnitude: {simplify(integrate(p,(s,-a_lim,a_lim)))}')
-
 
 soln = sym_sigma_y(p, polynomial=True)
 
