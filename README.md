@@ -5,6 +5,13 @@ This repository accompanies this preprint:
 Here is quick overview of each directory. Directories marked with legacy code are not used for the paper. 
 Further details about each script and siubdirectory can be found in the READMEs located in each directory.
 
+## Installation
+To use all the functions in `utils` clone this directory and install with pip. To commands to do so are:
+
+    git clone https://github.com/pprachas/info_mech.git
+    cd info_mech
+    pip install .
+
 |Directory|Description|
 |---------|-----------|
 |fenicsx_mi|directory for all the FEniCSx code used in the publication. This directory includes code for parameter space exploration and Bayesian Optimization. Both the FEA components and mutual information computation is found in this directory.|
