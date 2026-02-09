@@ -32,5 +32,17 @@ to run pytest with complete information on skips and xfails (expected failures) 
 pytest -rxs tests/
 ```
 
+## Citing
+
+If you find anything in this repository useful, it is appreciated if you cite the following paper:
+
+    @article{prachaseree2026information,
+      title={Information Propagation and Encoding in Solids: A Quantitative Approach Towards Mechanical Intelligence},
+      author={Prachaseree, Peerasait and Lejeune, Emma},
+      journal={arXiv preprint arXiv:2602.00140},
+      year={2026}
+    }
+
+
 
 
