@@ -1,8 +1,8 @@
 # Directories
 |Directory|Description|
 |---------|-----------|
-|even|Contains all the code to replicate results for elastic halfspace subjected to even Legendre Polynomials|
-|full|Contains all the code to replicate results for elastic halfspace subjected to full Legendre Polynomials|
+|legendre|Contains all the code to replicate results for elastic halfspace subjected to loads generated from Legendre Polynomials|
+|uniform| (legacy) Contains all the code to replicate results for elastic halfspace subjected to uniform loads with different widths|
 
 # Files
 |File|Description|
