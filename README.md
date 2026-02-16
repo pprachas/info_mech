@@ -11,7 +11,7 @@ To use all the functions in `utils` clone this directory and install with pip. T
     git clone https://github.com/pprachas/info_mech.git
     cd info_mech
     pip install .
-
+## Directories
 |Directory|Description|
 |---------|-----------|
 |fenicsx_mi|directory for all the FEniCSx code used in the publication. This directory includes code for parameter space exploration and Bayesian Optimization. Both the FEA components and mutual information computation is found in this directory.|
@@ -20,6 +20,7 @@ To use all the functions in `utils` clone this directory and install with pip. T
 |utils|scripts for all functions used in this work|
 |validation|code validation for analytical solution and information estimates (all legacy code)|
 
+Note that legacies files and directories are not cleaned but are not used to reproduce results in the paper.
 
 ##  Pytests
 
