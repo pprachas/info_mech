@@ -11,11 +11,15 @@ Here is quick overview of each directory. Directories marked with legacy code ar
 Further details about each script and siubdirectory can be found in the READMEs located in each directory.
 
 ## Installation
-To use all the functions in `utils` clone this directory and install with pip. To commands to do so are:
-
-    git clone https://github.com/pprachas/info_mech.git
+First, to ensure that al dependencies are installed, we provided the conda environment file. 
+Additionally, everything in the `utils` can be installed with pip. The simplest way to run code from this repository is to first create a conda environment file then pip still the git repo. The bash commands to do so are:
+```bash
+    git clone https://github.com/pprachas/info_mech.git # clone the git repo
+    conda env create -f environment.yml # create conda environment file
     cd info_mech
-    pip install .
+    pip install . # pip install functions in the utils diretory
+```
+    
 ## Directories
 |Directory|Description|
 |---------|-----------|
