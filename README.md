@@ -1,6 +1,11 @@
 # Code Repository for: "Information Propagation and Encoding in Solids: A Quantitative Approach Towards Mechanical Intelligence"
+<p align="center">
+<img src="mech_encoder.png" alt="Alt text" width="300">
+</p>
 This repository accompanies this preprint:
-[Information Propagation and Encoding in Solids: A Quantitative Approach Towards Mechanical Intelligence](https://arxiv.org/abs/2602.00140)
+[Information Propagation and Encoding in Solids: A Quantitative Approach Towards Mechanical Intelligence](https://arxiv.org/abs/2602.00140).
+In brief, this work uses information theory to formaulate quantitative framework for mechanical intelligence.
+
 
 Here is quick overview of each directory. Directories marked with legacy code are not used for the paper. 
 Further details about each script and siubdirectory can be found in the READMEs located in each directory.
