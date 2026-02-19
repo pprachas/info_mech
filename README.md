@@ -2,13 +2,14 @@
 <p align="center">
 <img src="mech_encoder.png" alt="Alt text" width="300">
 </p>
-This repository accompanies this preprint:
-[Information Propagation and Encoding in Solids: A Quantitative Approach Towards Mechanical Intelligence](https://arxiv.org/abs/2602.00140).
+
+This repository accompanies this preprint:[Information Propagation and Encoding in Solids: A Quantitative Approach Towards Mechanical Intelligence](https://arxiv.org/abs/2602.00140).
+
 In brief, this work uses information theory to formaulate quantitative framework for mechanical intelligence.
 
 
 Here is quick overview of each directory. Directories marked with legacy code are not used for the paper. 
-Further details about each script and siubdirectory can be found in the READMEs located in each directory.
+Further details about each script and subdirectory can be found in the READMEs located in each directory.
 
 ## Installation
 First, to ensure that al dependencies are installed, we provided the conda environment file. 
