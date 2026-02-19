@@ -3,7 +3,7 @@
 <img src="mech_encoder.png" alt="Alt text" width="300">
 </p>
 
-This repository accompanies this preprint:[Information Propagation and Encoding in Solids: A Quantitative Approach Towards Mechanical Intelligence](https://arxiv.org/abs/2602.00140).
+This repository accompanies this preprint: [Information Propagation and Encoding in Solids: A Quantitative Approach Towards Mechanical Intelligence](https://arxiv.org/abs/2602.00140).
 
 In brief, this work uses information theory to formaulate quantitative framework for mechanical intelligence.
 
